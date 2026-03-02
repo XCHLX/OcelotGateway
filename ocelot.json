@@ -1,9 +1,15 @@
 {
   "Routes": [
     {
+      "UpstreamPathTemplate": "/DemoApi/{everything}", // 路由匹配规则
       "DownstreamPathTemplate": "/{everything}", //转发路径参数
       "DownstreamScheme": "http", // 转发协议
-      "DownstreamHostAndPorts": [ // 转发地址
+      "UpstreamHttpMethod": [
+        "Get",
+        "Post"
+      ],
+      // --- 转发地址配置 ---
+      "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
           "Port": 7001
@@ -17,41 +23,42 @@
           "Port": 7003
         }
       ],
-      "UpstreamPathTemplate": "/DemoApi/{everything}", // 路由匹配规则
-      "UpstreamHttpMethod": [
-        "Get",
-        "Post"
-      ],
+      // --- 请求头转换配置 ---
       "UpstreamHeaderTransform": {
         "X-Forwarded-For": "{RemoteIpAddress}"
       },
-      "RouteIsCaseSensitive": true, // 区分大小写
+      // ---  区分大小写 ---
+      "RouteIsCaseSensitive": true,
+      // --- 负载均衡配置 ---
       "LoadBalancerOptions": {
-        "Type": "RoundRobin" // 负载均衡
+        "Type": "RoundRobin"
       },
-      // 限流配置
+      // --- 限流配置 ---
       "RateLimitOptions": {
         "EnableRateLimiting": true, // 开启限流
+        "ClientIdHeader": "X-Guest-Id", // 关键点：指定限流的识别头
+        "DisableRateLimitHeaders": true, // 是否在响应头中隐藏限流信息（建议设为 false，方便调试）
         "Period": "1s", // 统计周期：1s, 1m, 1h, 1d
-        "PeriodTimespan": 60, // 封禁时长：达到上限后，多少秒内不能访问
-        "Limit": 10 // 在 Period 周期内允许的最大请求数
+        "PeriodTimespan": 1, // 封禁时长：达到上限后，多少秒内不能访问
+        "Limit": 3, // 在 Period 周期内允许的最大请求数
+        "QuotaExceededMessage": "requestsAreTooFrequent pleaseTryAgainLater.", // 自定义错误消息
+        "HttpStatusCode": 429 // 触发限流时的状态码
       },
-      // --- 熔断与超时配置开始 ---
+      // --- 熔断与超时配置---
       "QoSOptions": {
-        "ExceptionsAllowedBeforeBreaking": 3, // 允许连续发生多少次异常后触发熔断
+        "ExceptionsAllowedBeforeBreaking": 5, // 允许连续发生多少次异常后触发熔断
         "DurationOfBreak": 1000, // 熔断开启的时间（毫秒）。在此期间，请求直接返回错误
-        "TimeoutValue": 1500 // 请求下游服务的超时时间（毫秒）
+        "TimeoutValue": 5000 // 请求下游服务的超时时间（毫秒）
       }
-      // --- 熔断与超时配置结束 ---
     }
   ],
-  "GlobalConfiguration": {
-    "BaseUrl": "http://localhost:7000",
-    "RateLimitOptions": {
-      "ClientIdHeader": "X-Guest-Id", // 关键点：指定限流的识别头
-      "DisableRateLimitHeaders": true, // 是否在响应头中隐藏限流信息（建议设为 false，方便调试）
-      "QuotaExceededMessage": "请求过于频繁，请稍后再试", // 自定义错误消息
-      "HttpStatusCode": 429 // 触发限流时的状态码
-    }
-  }
+  //"GlobalConfiguration": {
+  //  "BaseUrl": "http://localhost:7000",
+  //  "RateLimitOptions": {
+  //    "ClientIdHeader": "X-Guest-Id", // 关键点：指定限流的识别头
+  //    "DisableRateLimitHeaders": true, // 是否在响应头中隐藏限流信息（建议设为 false，方便调试）
+  //    "QuotaExceededMessage": "请求过于频繁，请稍后再试", // 自定义错误消息
+  //    "HttpStatusCode": 429 // 触发限流时的状态码
+  //  }
+  //}
 }
