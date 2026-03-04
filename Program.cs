@@ -1,6 +1,8 @@
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using Ocelot.Provider.Polly;
+using Ocelot.ServiceDiscovery;
+using OcelotGateway;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,7 +11,13 @@ builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange
 
 // 2. 注入 Ocelot 服务
 builder.Services.AddOcelot().AddPolly();
-
+// 3. 添加自定义服务发现
+builder.Services.AddSingleton<IServiceDiscoveryProviderFactory, MyCustomServiceDiscoveryProviderFactory>();
+// 4. 关键：除了 Delegate，建议同时注册 Provider 自身（解决某些版本下的反射校验问题）
+builder.Services.AddSingleton<ServiceDiscoveryFinderDelegate>((provider, config, route) =>
+{
+    return null;
+});
 var app = builder.Build();
 app.Use(async (context, next) =>
 {

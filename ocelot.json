@@ -1,64 +1,56 @@
 {
   "Routes": [
     {
-      "UpstreamPathTemplate": "/DemoApi/{everything}", // 路由匹配规则
-      "DownstreamPathTemplate": "/{everything}", //转发路径参数
+      "UpstreamPathTemplate": "/api/{url}", //上游Api请求路由规则
+      "DownstreamPathTemplate": "/api/{url}", //网关转发到下游路由规则
       "DownstreamScheme": "http", // 转发协议
       "UpstreamHttpMethod": [
-        "Get",
-        "Post"
+        "GET",
+        "POST"
       ],
-      // --- 转发地址配置 ---
-      "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 7001
-        },
-        {
-          "Host": "localhost",
-          "Port": 7002
-        },
-        {
-          "Host": "localhost",
-          "Port": 7003
-        }
-      ],
-      // --- 请求头转换配置 ---
-      "UpstreamHeaderTransform": {
-        "X-Forwarded-For": "{RemoteIpAddress}"
+      "ServiceName": "MyBackendService",
+      // 上游请求允许的HTTP方法，包括GET和POST
+      //"DownstreamHostAndPorts": [ // 下游服务的主机和端口列表，用于负载均衡
+      //  {
+      //    //生产
+      //    "Host": "127.0.0.1", //下游地址
+      //    "Port": 8099 //下游端口号
+      //  },
+      //  {
+      //    //生产
+      //    "Host": "127.0.0.1", //下游地址
+      //    "Port": 8098 //下游端口号
+      //  }
+      //],
+      "RouteIsCaseSensitive": false, // 路径是否区分大小写，false表示不区分
+      "LoadBalancerOptions": { // 负载均衡选项
+        "Type": "RoundRobin" // 负载均衡策略类型，使用最少连接数策略
+        //"Type": "RoundRobin" // 负载均衡策略类型，使用轮询策略"
       },
-      // ---  区分大小写 ---
-      "RouteIsCaseSensitive": true,
-      // --- 负载均衡配置 ---
-      "LoadBalancerOptions": {
-        "Type": "RoundRobin"
+      "UpstreamHeaderTransform": { // 上游请求头转换配置
+        "X-Forwarded-For": "{RemoteIpAddress}" // 将上游请求头的X-Forwarded-For设置为远程IP地址
       },
-      // --- 限流配置 ---
-      "RateLimitOptions": {
-        "EnableRateLimiting": true, // 开启限流
-        "ClientIdHeader": "X-Guest-Id", // 关键点：指定限流的识别头
-        "DisableRateLimitHeaders": true, // 是否在响应头中隐藏限流信息（建议设为 false，方便调试）
-        "Period": "1s", // 统计周期：1s, 1m, 1h, 1d
-        "PeriodTimespan": 1, // 封禁时长：达到上限后，多少秒内不能访问
-        "Limit": 3, // 在 Period 周期内允许的最大请求数
-        "QuotaExceededMessage": "requestsAreTooFrequent pleaseTryAgainLater.", // 自定义错误消息
-        "HttpStatusCode": 429 // 触发限流时的状态码
+      "RateLimitOptions": { // 限流选项配置
+        "EnableRateLimiting": true, // 是否启用限流
+        "ClientIdHeader": "X-Guest-Id", // 用于标识客户端的请求头
+        "DisableRateLimitHeaders": false, // 是否禁用限流相关的响应头
+        "Period": "1s", // 限流时间周期
+        "Limit": 2, // 时间周期内允许的最大请求数
+        "PeriodTimespan": 5, // 封禁时长：达到上限后，多少秒内不能访问
+        "HttpStatusCode": 429, // 超出限流时返回的HTTP状态码
+        "QuotaExceededMessage": "Too many requests. Please try again later." // 超出限流时返回的消息
       },
-      // --- 熔断与超时配置---
-      "QoSOptions": {
-        "ExceptionsAllowedBeforeBreaking": 5, // 允许连续发生多少次异常后触发熔断
-        "DurationOfBreak": 1000, // 熔断开启的时间（毫秒）。在此期间，请求直接返回错误
-        "TimeoutValue": 5000 // 请求下游服务的超时时间（毫秒）
+      "QoSOptions": { // 服务质量(QoS)选项配置
+        "ExceptionsAllowedBeforeBreaking": 3, // 在断路器打开前允许的异常次数
+        "DurationOfBreak": 10000, // 断路器打开后的持续时间（毫秒）
+        "TimeoutValue": 3000 // 请求超时时间（毫秒）
       }
     }
   ],
-  //"GlobalConfiguration": {
-  //  "BaseUrl": "http://localhost:7000",
-  //  "RateLimitOptions": {
-  //    "ClientIdHeader": "X-Guest-Id", // 关键点：指定限流的识别头
-  //    "DisableRateLimitHeaders": true, // 是否在响应头中隐藏限流信息（建议设为 false，方便调试）
-  //    "QuotaExceededMessage": "请求过于频繁，请稍后再试", // 自定义错误消息
-  //    "HttpStatusCode": 429 // 触发限流时的状态码
-  //  }
-  //}
+  "GlobalConfiguration": { // 全局配置
+    "BaseUrl": "http://localhost:7000", // 网关的基础URL
+    "ServiceDiscoveryProvider": {
+      "Type": "MyCustom"
+    }
+  }
 }
