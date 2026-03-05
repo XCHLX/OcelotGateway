@@ -1,0 +1,181 @@
+﻿@using Ocelot.Values
+@using OcelotGateway.Dto
+@model List<OcelotGatewayDto>
+
+<style>
+
+    body {
+        font-family: "Segoe UI", Arial;
+        background: #f4f6fb;
+    }
+
+    .container {
+        width: 1000px;
+        margin: 40px auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        padding: 25px;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    h2 {
+        margin: 0;
+    }
+
+    button {
+        padding: 6px 14px;
+        border: none;
+        border-radius: 6px;
+        background: #4f46e5;
+        color: white;
+        cursor: pointer;
+    }
+
+        button:hover {
+            background: #4338ca;
+        }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th {
+        background: #4f46e5;
+        color: white;
+        padding: 10px;
+    }
+
+    td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        text-align: center;
+    }
+
+    tr:hover {
+        background: #f1f5ff;
+    }
+
+    .status {
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        color: white;
+    }
+
+    .status-ok {
+        background: #16a34a;
+    }
+
+    .status-bad {
+        background: #dc2626;
+    }
+
+    .count {
+        font-weight: bold;
+        color: #4f46e5;
+    }
+
+</style>
+
+
+<div class="container">
+
+    <div class="header">
+        <h2>网关服务实例</h2>
+       
+        <div>
+            <button onclick="location.reload()">刷新</button>
+            <label for="refreshInterval">刷新间隔：</label>
+            <select id="refreshInterval">
+                <option value="0">关闭</option>
+                <option value="3000">3 秒</option>
+                <option value="5000" selected>5 秒</option>
+                <option value="10000">10 秒</option>
+                <option value="30000">30 秒</option>
+            </select>
+        </div>
+    </div>
+
+    
+
+    <table>
+        <tr>
+            <th>服务名称</th>
+            <th>实例地址</th>
+            <th>实例数量</th>
+            <th>状态</th>
+        </tr>
+
+        @foreach (var group in Model.GroupBy(x => x.ServiceName))
+        {
+            var first = true;
+            var count = group.Count();
+
+            foreach (var item in group)
+            {
+                <tr>
+                    @if (first)
+                    {
+                        <td rowspan="@count">@group.Key</td>
+                        first = false;
+                    }
+
+                    <td>@item.ExampleAddress</td>
+
+                    @if (group.First() == item)
+                    {
+                        <td rowspan="@count" class="count">@count</td>
+                    }
+
+                    <td>
+                        <span class="status @(item.State ? "status-ok" : "status-bad")">
+                            @(item.State ? "正常" : "异常")
+                        </span>
+                    </td>
+                    
+                </tr>
+            }
+        }
+    </table>
+
+</div>
+
+<script>
+    var refreshTimer = null;
+
+    function startAutoRefresh(interval) {
+        if (refreshTimer) clearInterval(refreshTimer);
+        if (interval > 0) {
+            refreshTimer = setInterval(function () {
+                location.reload();
+            }, interval);
+        }
+    }
+
+    // 获取下拉框元素
+    var select = document.getElementById("refreshInterval");
+
+    // 页面加载时恢复上次选择
+    var savedInterval = localStorage.getItem("refreshInterval");
+    if (savedInterval !== null) {
+        select.value = savedInterval;
+    }
+
+    // 开始自动刷新
+    startAutoRefresh(parseInt(select.value));
+
+    // 监听下拉框变化
+    select.addEventListener("change", function () {
+        var interval = parseInt(this.value);
+        localStorage.setItem("refreshInterval", interval); // 保存选择
+        startAutoRefresh(interval);
+    });
+</script>
