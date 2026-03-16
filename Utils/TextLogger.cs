@@ -12,7 +12,7 @@ namespace OcelotGateway.Utils
         /// <summary>
         /// 写日志，支持自定义文件名。如果 fileName 为 null，则按日期生成默认文件。
         /// </summary>
-        public static async Task LogAsync(string message, string? fileName = null)
+        public static void Log(string message, string? fileName = null)
         {
             try
             {

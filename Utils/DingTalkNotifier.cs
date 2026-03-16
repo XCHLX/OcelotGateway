@@ -17,11 +17,16 @@ namespace OcelotGateway.Utils
         /// </summary>
         /// <param name="webhookUrl">不带签名的Webhook URL</param>
         /// <param name="secret">钉钉机器人SEC开头的密钥，如果不加签请传 null 或空</param>
+        /// <param name="title">文本消息内容</param>
         /// <param name="message">文本消息内容</param>
-        public static async Task SendTextMessageAsync(string? webhookUrl, string? secret, string message)
+        public static async Task SendTextMessageAsync(string? webhookUrl, string? secret, string title, string message)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(webhookUrl) || string.IsNullOrWhiteSpace(secret))
+                {
+                    throw new ArgumentException("Webhook URL 和 Secret 不能为空");
+                }
                 string url = webhookUrl ?? "";
 
                 // 如果配置了Secret，则计算签名
@@ -36,11 +41,13 @@ namespace OcelotGateway.Utils
 
                     url += $"&timestamp={timestamp}&sign={sign}";
                 }
-
+                Dictionary<string, object> markdown = new Dictionary<string, object>();
+                markdown.Add("title", title);
+                markdown.Add("text", $"{message}");
                 var payload = new
                 {
-                    msgtype = "text",
-                    text = new { content = message }
+                    msgtype = "markdown",
+                    markdown = markdown
                 };
 
                 var json = JsonSerializer.Serialize(payload);

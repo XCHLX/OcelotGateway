@@ -3,6 +3,7 @@ using Ocelot.Values;                       // 引入Ocelot网关的值类型
 using OcelotGateway.Dto;
 using OcelotGateway.Utils;
 using OcelotGateway.Utils.Channels;
+using System.Xml.Linq;
 
 namespace OcelotGateway.BackgroundServices                     // Ocelot网关命名空间
 {
@@ -48,7 +49,7 @@ namespace OcelotGateway.BackgroundServices                     // Ocelot网关�
             while (!stoppingToken.IsCancellationRequested)
             {
                 await CheckAllServices();  // 执行所有服务的健康检查
-                var interval = _configuration.GetValue<int>("ServiceHealthCheckIntervalSeconds", 5);
+                var interval = _configuration.GetValue<int>("ServiceHealthCheckIntervalSeconds", 60);
                 await Task.Delay(TimeSpan.FromSeconds(interval), stoppingToken);  // 每分钟执行一次
             }
         }
@@ -76,8 +77,7 @@ namespace OcelotGateway.BackgroundServices                     // Ocelot网关�
                 {
                     try
                     {
-                        var url = $"http://{node.Host}:{node.Port}{service.Health}";  // 构建健康检查URL
-                        var isok = await CheckHealthAsync(url, service);  // 执行健康检查
+                        var isok = await CheckHealthAsync(node, service);  // 执行健康检查
 
                         if (isok)
                         {
@@ -105,7 +105,6 @@ namespace OcelotGateway.BackgroundServices                     // Ocelot网关�
                     healthyList,
                     TimeSpan.FromMinutes(10));
             }
-            await TextLogger.LogAsync($"健康检查已更新", "健康检查");
 
             Console.WriteLine("健康检查已更新" + DateTime.Now);  // 输出更新时间
         }
@@ -115,16 +114,23 @@ namespace OcelotGateway.BackgroundServices                     // Ocelot网关�
         /// </summary>
         /// <param name="url">健康检查URL</param>
         /// <returns>服务是否健康</returns>
-        private async Task<bool> CheckHealthAsync(string url, ServiceDiscovery serviceDiscovery)
+        private async Task<bool> CheckHealthAsync(DownstreamHostAndPortsItem node, ServiceDiscovery serviceDiscovery)
         {
-            var service = new ServiceDiscoveryChannel()
+            if (string.IsNullOrWhiteSpace(serviceDiscovery.Health))
             {
+                // 无需健康检查，直接返回健康
+                return true;
+            }
+
+            var url = $"http://{node.Host}:{node.Port}{serviceDiscovery.Health}";  // 构建健康检查URL
+
+            var isok = false;
+            var alertChannelDto = new AlertChannelDto()
+            {
+                ExampleAddress = url,
+                FailureType = "健康检查失败",
                 ServiceName = serviceDiscovery.ServiceName,
-                Health = serviceDiscovery.Health,
-                DownstreamHostAndPorts = serviceDiscovery.DownstreamHostAndPorts,
-                TimeOut = serviceDiscovery.TimeOut,
-                DingDingWebHook = serviceDiscovery.DingDingWebHook,
-                DingDingSecret = serviceDiscovery.DingDingSecret
+                Node = node
             };
             try
             {
@@ -132,28 +138,35 @@ namespace OcelotGateway.BackgroundServices                     // Ocelot网关�
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(serviceDiscovery.TimeOut));
                 var httpClient = _httpClientFactory.CreateClient();
                 var response = await httpClient.GetAsync(url, cts.Token);
-                if (!response.IsSuccessStatusCode)
+                isok = response.IsSuccessStatusCode;  // 返回HTTP状态码是否成功
+                if (isok)
                 {
-                    service.Message = response.ReasonPhrase;
-                    await TextLogger.LogAsync($"{url}健康检查失败", "健康检查");
-                    _alertChannel.MyChannel.Writer.TryWrite(new KeyValuePair<string, ServiceDiscoveryChannel>(url, service));
+                    TextLogger.Log($"**服务名称**: {serviceDiscovery.ServiceName}  \r\n**实例地址**: {node.Host}:{node.Port}  ", "健康检查成功");
                 }
-                await TextLogger.LogAsync($"{url}健康检查成功", "健康检查成功");
-                return response.IsSuccessStatusCode;  // 返回HTTP状态码是否成功
+                else
+                {
+                    alertChannelDto.ErrorMsg = "cowu ";
+                    TextLogger.Log($"{url}健康检查超时", "健康检查失败");
+                }
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
-                await TextLogger.LogAsync($"{url}健康检查超时", "健康检查");
-                _alertChannel.MyChannel.Writer.TryWrite(new KeyValuePair<string, ServiceDiscoveryChannel>(url, service));
-                return false;  // 超时返回不健康
+                TextLogger.Log($"{url}健康检查超时", "健康检查失败");
+                alertChannelDto.FailureType = "健康检查超时";
+                alertChannelDto.ErrorMsg = ex.Message;
             }
             catch (Exception ex)
             {
-                await TextLogger.LogAsync($"{url}健康检查异常: {ex.Message}", "健康检查");
-                _alertChannel.MyChannel.Writer.TryWrite(new KeyValuePair<string, ServiceDiscoveryChannel>(url, service));
-
-                return false;  // 异常返回不健康
+                TextLogger.Log($"{url}健康检查异常: {ex.Message}", "健康检查失败");
+                alertChannelDto.FailureType = "健康检查报错";
+                alertChannelDto.ErrorMsg = ex.Message;
             }
+            if (!isok)
+            {
+                _alertChannel.MyChannel.Writer.TryWrite(alertChannelDto);
+            }
+
+            return isok;
         }
     }
 }

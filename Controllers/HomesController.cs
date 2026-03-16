@@ -7,7 +7,7 @@ using System.Xml.Linq;
 
 namespace OcelotGateway.Controllers
 {
-    [Route("internal/[controller]/[action]")]
+    [Route("homes/[action]")]
     public class HomesController : Controller
     {
         /// <summary>
@@ -47,7 +47,7 @@ namespace OcelotGateway.Controllers
         [HttpGet]
         public IActionResult Index(string pwd)
         {
-            if (pwd != "123456") return Unauthorized();
+            if (pwd != DateTime.Now.ToString("MMdd")) return Unauthorized();
 
             var ocelotGatewayDtos = new List<OcelotGatewayDto>();
             var serviceDiscoveryList = new List<ServiceDiscovery>();
@@ -69,6 +69,7 @@ namespace OcelotGateway.Controllers
                         ExampleAddress = $"{item.Host}:{item.Port}",
                         HealthCheck = service.Health,
                         ServiceName = service.ServiceName,
+                        Alias = service.Alias,
                         State = any
                     });
                 }

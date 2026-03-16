@@ -5,7 +5,7 @@ namespace OcelotGateway.Utils.Channels
 {
     public class AlertChannel
     {
-        public Channel<KeyValuePair<string, ServiceDiscoveryChannel>> MyChannel { get; }
-            = Channel.CreateUnbounded<KeyValuePair<string, ServiceDiscoveryChannel>>();
+        public Channel<AlertChannelDto> MyChannel { get; }
+            = Channel.CreateUnbounded<AlertChannelDto>();
     }
 }

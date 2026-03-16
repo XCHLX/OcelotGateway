@@ -55,13 +55,13 @@
 
     td {
         padding: 10px;
-        border-bottom: 1px solid #eee;
+        border: 1px solid #eee;
         text-align: center;
     }
 
-    tr:hover {
+    /* tr:hover {
         background: #f1f5ff;
-    }
+    } */
 
     .status {
         padding: 3px 10px;
@@ -124,10 +124,11 @@
                 <tr>
                     @if (first)
                     {
-                        <td rowspan="@count">@group.Key</td>
+                        <td rowspan="@count" title="@item.Alias">@group.Key </td>
+                        @* <td rowspan="@count">@item.Alias</td> *@
                         first = false;
                     }
-
+                    
                     <td>@item.ExampleAddress</td>
 
                     @if (group.First() == item)

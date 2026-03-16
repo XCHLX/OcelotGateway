@@ -16,6 +16,11 @@
         public string? ServiceName { get; set; }
 
         /// <summary>
+        /// 别名
+        /// </summary>
+        public string? Alias { get; set; }
+
+        /// <summary>
         /// 健康检查路径
         /// </summary>
         public string? Health { get; set; }

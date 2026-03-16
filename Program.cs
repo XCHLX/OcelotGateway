@@ -65,7 +65,7 @@ app.Use(async (context, next) =>
     await next();
 });
 // 只让 非 /internal/* 进入 Ocelot
-app.MapWhen(ctx => !ctx.Request.Path.StartsWithSegments("/internal"), subApp =>
+app.MapWhen(ctx => !ctx.Request.Path.StartsWithSegments("/homes"), subApp =>
 {
     subApp.UseOcelot().Wait();
 });
