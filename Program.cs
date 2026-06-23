@@ -93,7 +93,7 @@ app.MapWhen(ctx => !ctx.Request.Path.StartsWithSegments("/homes"), subApp =>
             // await alertChannel.SendAsync($"警告：检测到恶意刷接口，Client: {clientId}");
         }
     });
-
+    subApp.UseWebSockets();
     subApp.UseOcelot().Wait();
 });
 
