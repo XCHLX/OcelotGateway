@@ -34,36 +34,61 @@ namespace OcelotGateway.BackgroundServices
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await foreach (var alert in _alertChannel.MyChannel.Reader.ReadAllAsync(stoppingToken))
+            try
             {
-                Console.WriteLine($"{alert.ServiceName}-----{alert.ErrorMsg}");
-                if (string.IsNullOrWhiteSpace(alert.ServiceName))
-                    continue;
-
-                var queue = _failureDict.GetOrAdd(alert.ServiceName + alert.ExampleAddress, _ => new ConcurrentQueue<DateTime>());
-                var now = DateTime.UtcNow;
-
-                // 添加当前失败时间
-                queue.Enqueue(now);
-
-                // 移除窗口之外的失败记录
-                while (queue.TryPeek(out var time) && (now - time) > _timeWindow)
+                await foreach (var alert in _alertChannel.MyChannel.Reader.ReadAllAsync(stoppingToken))
                 {
-                    queue.TryDequeue(out _);
-                }
-
-                // 判断是否达到告警阈值
-                if (queue.Count >= _threshold)
-                {
-                    // 获取上次告警时间
-                    _lastAlertDict.TryGetValue(alert.ServiceName + alert.ExampleAddress, out var lastAlertTime);
-
-                    // 当前时间和上次告警时间的间隔大于窗口才发送告警
-                    if ((now - lastAlertTime) > _timeWindow)
+                    try
                     {
-                        await SendDingTalkAlert(alert, queue.Count);
-                        _lastAlertDict[alert.ServiceName + alert.ExampleAddress] = now;
+                        await HandleAlert(alert);
                     }
+                    catch (Exception ex)
+                    {
+                        // 兜底：单条告警处理失败只记日志，不能让异常逃出 ExecuteAsync，
+                        // 否则 .NET 6+ 默认 StopHost 行为会直接终止整个网关进程。
+                        // 注意这里不能用 stoppingToken 取消的异常去中断循环，否则关停时会刷错误日志。
+                        TextLogger.Log($"告警处理异常: {ex}", "告警异常");
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 宿主正在关停，正常退出
+            }
+        }
+
+        /// <summary>
+        /// 处理单条告警：滑动窗口计数 + 达到阈值后推送钉钉
+        /// </summary>
+        private async Task HandleAlert(AlertChannelDto alert)
+        {
+            Console.WriteLine($"{alert.ServiceName}-----{alert.ErrorMsg}");
+            if (string.IsNullOrWhiteSpace(alert.ServiceName))
+                return;
+
+            var queue = _failureDict.GetOrAdd(alert.ServiceName + alert.ExampleAddress, _ => new ConcurrentQueue<DateTime>());
+            var now = DateTime.UtcNow;
+
+            // 添加当前失败时间
+            queue.Enqueue(now);
+
+            // 移除窗口之外的失败记录
+            while (queue.TryPeek(out var time) && (now - time) > _timeWindow)
+            {
+                queue.TryDequeue(out _);
+            }
+
+            // 判断是否达到告警阈值
+            if (queue.Count >= _threshold)
+            {
+                // 获取上次告警时间
+                _lastAlertDict.TryGetValue(alert.ServiceName + alert.ExampleAddress, out var lastAlertTime);
+
+                // 当前时间和上次告警时间的间隔大于窗口才发送告警
+                if ((now - lastAlertTime) > _timeWindow)
+                {
+                    await SendDingTalkAlert(alert, queue.Count);
+                    _lastAlertDict[alert.ServiceName + alert.ExampleAddress] = now;
                 }
             }
         }

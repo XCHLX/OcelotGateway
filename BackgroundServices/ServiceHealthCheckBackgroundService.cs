@@ -48,9 +48,28 @@ namespace OcelotGateway.BackgroundServices                     // Ocelot网关�
             // 当服务未取消时，持续执行健康检查
             while (!stoppingToken.IsCancellationRequested)
             {
-                await CheckAllServices();  // 执行所有服务的健康检查
-                var interval = _configuration.GetValue<int>("ServiceHealthCheckIntervalSeconds", 60);
-                await Task.Delay(TimeSpan.FromSeconds(interval), stoppingToken);  // 每分钟执行一次
+                try
+                {
+                    await CheckAllServices();  // 执行所有服务的健康检查
+                }
+                catch (Exception ex)
+                {
+                    // 兜底：单轮探测出错只记日志，不能让异常逃出 ExecuteAsync。
+                    // .NET 6+ 默认 BackgroundServiceExceptionBehavior.StopHost，
+                    // 后台服务一旦抛出未捕获异常，整个网关进程会直接退出。
+                    TextLogger.Log($"健康检查执行异常: {ex}", "健康检查异常");
+                }
+
+                try
+                {
+                    // 至少 1 秒，避免配置成 0 或负数时 Task.Delay 抛异常或变成忙循环
+                    var interval = Math.Max(1, _configuration.GetValue<int>("ServiceHealthCheckIntervalSeconds", 60));
+                    await Task.Delay(TimeSpan.FromSeconds(interval), stoppingToken);  // 每分钟执行一次
+                }
+                catch (OperationCanceledException)
+                {
+                    break;  // 宿主正在关停，正常退出循环
+                }
             }
         }
 

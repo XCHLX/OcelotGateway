@@ -25,6 +25,14 @@ builder.Services.AddSingleton<AlertChannel>();
 //builder.Services.AddSingleton<DingTalkNotifier>();
 builder.Services.AddHostedService<AlertBackgroundService>();
 
+// 后台服务默认行为是 StopHost：任何后台服务抛出未捕获异常，整个网关进程直接退出。
+// 对网关来说这是不可接受的——一个探测任务出错不该让所有业务路由一起挂掉，所以改成只记日志、进程继续运行。
+// 各后台服务内部已经各自加了 try/catch，这里是第二层保险。
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+});
+
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 

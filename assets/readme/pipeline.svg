@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="392" viewBox="0 0 1200 392" role="img" aria-labelledby="pipelineTitle pipelineDesc">
+  <title id="pipelineTitle">请求链路：一次调用经过的五道处理</title>
+  <desc id="pipelineDesc">请求依次经过来源校验、身份标记、限流、熔断与超时、健康节点选择，最后转发到下游。限流超限时直接返回 429，不进入后续环节。</desc>
+
+  <rect width="1200" height="392" rx="24" fill="#0C0E12"/>
+  <rect x="0.5" y="0.5" width="1199" height="391" rx="24" fill="none" stroke="#232A34"/>
+
+  <text x="60" y="62" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="32" font-weight="600" fill="#F2F4F8">一次请求要过五道关</text>
+  <text x="60" y="98" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="20" fill="#7B8494">顺序与实际中间件注册顺序一致</text>
+
+  <g id="stages" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+
+    <g transform="translate(60 140)">
+      <rect width="188" height="150" rx="14" fill="#12151B" stroke="#232A34"/>
+      <text x="20" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" fill="#4C8DFF">01</text>
+      <text x="20" y="80" font-size="24" font-weight="600" fill="#F2F4F8">来源校验</text>
+      <text x="20" y="112" font-size="18" fill="#7B8494">命中 cors 白名单</text>
+      <text x="20" y="136" font-size="18" fill="#7B8494">才放行</text>
+    </g>
+
+    <g transform="translate(288 140)">
+      <rect width="188" height="150" rx="14" fill="#12151B" stroke="#232A34"/>
+      <text x="20" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" fill="#4C8DFF">02</text>
+      <text x="20" y="80" font-size="24" font-weight="600" fill="#F2F4F8">身份标记</text>
+      <text x="20" y="112" font-size="18" fill="#7B8494">写入 X-Guest-Id</text>
+      <text x="20" y="136" font-size="18" fill="#7B8494">供限流区分来源</text>
+    </g>
+
+    <g transform="translate(516 140)">
+      <rect width="188" height="150" rx="14" fill="#12151B" stroke="#232A34"/>
+      <text x="20" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" fill="#4C8DFF">03</text>
+      <text x="20" y="80" font-size="24" font-weight="600" fill="#F2F4F8">限流</text>
+      <text x="20" y="112" font-size="18" fill="#7B8494">10000 次 / 秒</text>
+      <text x="20" y="136" font-size="18" fill="#7B8494">超限直接 429</text>
+    </g>
+
+    <g transform="translate(744 140)">
+      <rect width="188" height="150" rx="14" fill="#12151B" stroke="#232A34"/>
+      <text x="20" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" fill="#4C8DFF">04</text>
+      <text x="20" y="80" font-size="24" font-weight="600" fill="#F2F4F8">熔断</text>
+      <text x="20" y="112" font-size="18" fill="#7B8494">3 次异常断开</text>
+      <text x="20" y="136" font-size="18" fill="#7B8494">单次超时 30 秒</text>
+    </g>
+
+    <g transform="translate(972 140)">
+      <rect width="168" height="150" rx="14" fill="#12151B" stroke="#4C8DFF" stroke-opacity="0.65"/>
+      <text x="20" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" fill="#4C8DFF">05</text>
+      <text x="20" y="80" font-size="24" font-weight="600" fill="#F2F4F8">选节点</text>
+      <text x="20" y="112" font-size="18" fill="#7B8494">只挑健康的</text>
+      <text x="20" y="136" font-size="18" fill="#7B8494">最少连接优先</text>
+    </g>
+
+    <g stroke="#3A4250" stroke-width="2" fill="none">
+      <path d="M248 215 L288 215"/><path d="M476 215 L516 215"/>
+      <path d="M704 215 L744 215"/><path d="M932 215 L972 215"/>
+    </g>
+    <g fill="#3A4250">
+      <polygon points="288,215 280,210 280,220"/>
+      <polygon points="516,215 508,210 508,220"/>
+      <polygon points="744,215 736,210 736,220"/>
+      <polygon points="972,215 964,210 964,220"/>
+    </g>
+  </g>
+
+  <g id="short-circuit">
+    <path d="M610 290 L610 322 L338 322" fill="none" stroke="#E5534B" stroke-width="1.8" stroke-dasharray="6 5" stroke-opacity="0.7"/>
+    <circle cx="338" cy="322" r="4" fill="#E5534B"/>
+    <text x="360" y="330" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="18" fill="#8E97A5">超限时在这里就地返回 429，不再往下走</text>
+  </g>
+
+  <g id="downstream">
+    <path d="M1060 290 L1060 322" fill="none" stroke="#3FB950" stroke-width="2" stroke-opacity="0.6"/>
+    <text x="1060" y="348" text-anchor="end" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="18" fill="#8E97A5">转发到下游</text>
+  </g>
+</svg>
