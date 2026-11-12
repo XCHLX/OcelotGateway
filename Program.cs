@@ -27,6 +27,25 @@ builder.Services.AddHostedService<AlertBackgroundService>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
+
+// 5. 跨域：从 appsettings.json 的 "cors" 节点读取信任站点
+var corsOrigins = builder.Configuration.GetSection("cors").Get<string[]>() ?? Array.Empty<string>();
+// WithOrigins 要求 origin 不带结尾的 "/"，这里统一裁掉，避免配置写错导致匹配不上
+corsOrigins = corsOrigins.Where(o => !string.IsNullOrWhiteSpace(o))
+                         .Select(o => o.TrimEnd('/'))
+                         .ToArray();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(corsOrigins)   // 只放开配置里列出的来源，不能用 AllowAnyOrigin
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials()         // 允许携带 Cookie / Authorization
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+    });
+});
+
 // 2. 注入 Ocelot 服务
 builder.Services.AddOcelot(builder.Configuration).AddPolly();
 // 3. 添加自定义服务发现
@@ -48,6 +67,10 @@ builder.Services.AddSingleton<ServiceDiscoveryFinderDelegate>((provider, config,
 });
 var app = builder.Build();
 app.UseRouting();
+
+// 跨域中间件必须放在 UseRouting 之后、任何终端中间件之前，
+// 这样 MVC 控制器和 Ocelot 两个分支都会带上 CORS 响应头
+app.UseCors();
 
 app.MapControllers();   // 先 MVC
 app.Use(async (context, next) =>
